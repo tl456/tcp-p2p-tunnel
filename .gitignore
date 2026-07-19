@@ -1,0 +1,45 @@
+# Local configuration and secrets
+config.json
+config.local.json
+config.*.local.json
+*.secret.json
+.env
+.env.*
+
+# Runtime state and backups
+runtime-memory.json
+*.state.json
+*.tmp
+*.bak
+*.old
+
+# Logs
+logs/
+*.log
+*.jsonl
+*.jsonl.*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Build and release artifacts
+build/
+dist/
+*.egg-info/
+*.zip
+*.exe
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*~

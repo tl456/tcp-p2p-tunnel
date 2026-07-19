@@ -1,0 +1,166 @@
+{
+  "_guide": "公开示例配置。复制为 config.json 后填写自己的节点信息、服务器地址、共享密钥和 Web 密码。不要提交真实 config.json。",
+  "schema_version": 1,
+  "node": {
+    "_comment": "节点ID只能是 A-Z 单个大写字母。所有受控节点填写同一个 shared_key。",
+    "id": "A",
+    "name": "Example-Laptop",
+    "shared_key": "CHANGE-ME-SAME-LONG-RANDOM-KEY-ON-ALL-NODES"
+  },
+  "server": {
+    "_comment": "填写部署 server-stable.py 的域名或公网IP。AUTO会先尝试IPv6，再尝试IPv4。",
+    "address": "your-server.example.com",
+    "signal_port": 61009,
+    "relay_port": 61010,
+    "connect_mode": "AUTO",
+    "connect_timeout": 8.0,
+    "reconnect_min": 3.0,
+    "reconnect_max": 30.0,
+    "keepalive_interval": 20.0,
+    "keepalive_timeout": 65.0
+  },
+  "tunnel": {
+    "_comment": "稳定版连接顺序固定为 IPv6 TCP -> IPv4 TCP -> Relay。AUTO最适合家庭节点。",
+    "mode": "AUTO",
+    "connection_order": [
+      "IPV6_TCP",
+      "IPV4_TCP",
+      "RELAY"
+    ],
+    "punch_policy": "PRECONNECT",
+    "peer_punch_policies": {},
+    "preconnect_retry_interval": 45.0,
+    "preconnect_start_delay": 1.0,
+    "auto_port": false,
+    "p2p_port": 32000,
+    "p2p_connect_timeout": 4.0,
+    "p2p_handshake_timeout": 6.0,
+    "p2p_total_timeout_ipv6": 8.0,
+    "p2p_total_timeout_ipv4": 10.0,
+    "max_parallel_candidates": 4,
+    "candidate_stagger": 0.25,
+    "attempt_history_limit": 40,
+    "relay_enabled": true,
+    "relay_connect_timeout": 10.0,
+    "relay_total_timeout": 28.0,
+    "relay_retries": 1,
+    "relay_upgrade_to_p2p": true,
+    "relay_upgrade_interval": 60.0,
+    "keep_tunnels_on_signal_loss": true,
+    "degraded_keepalive_interval": 5.0,
+    "degraded_keepalive_timeout": 45.0,
+    "normal_keepalive_interval": 20.0,
+    "normal_keepalive_timeout": 65.0,
+    "data_frame_size": 16384,
+    "max_frame_size": 1048576,
+    "max_sessions_per_tunnel": 1024,
+    "max_tunnel_queue_frames": 1024,
+    "max_tunnel_queue_bytes": 16777216,
+    "queue_put_timeout": 15.0,
+    "udp_session_timeout": 60.0,
+    "max_udp_sessions": 1024,
+    "max_udp_datagram": 65507
+  },
+  "encryption": {
+    "_comment": "默认启用标准库轻量加密。服务器不知道共享密钥，也不能解密P2P或Relay数据。",
+    "enabled": true,
+    "algorithm": "HMAC_STREAM"
+  },
+  "discovery": {
+    "_comment": "用于补充公网候选地址。若不希望访问公网查询接口，可将 public_ip_enabled 设为 false。",
+    "public_ip_enabled": true,
+    "timeout": 4.0,
+    "refresh_interval": 300.0,
+    "ignore_https_certificate_errors": false,
+    "ipv6_apis": [
+      "https://ipv6.icanhazip.com",
+      "https://api64.ipify.org",
+      "https://v6.ident.me"
+    ],
+    "ipv4_apis": [
+      "https://ipv4.icanhazip.com",
+      "https://v4.ident.me"
+    ]
+  },
+  "recovery": {
+    "_comment": "信令掉线后保留隧道，并将最近成功地址与恢复代次保存到本JSON。不能无缝恢复已经断开的业务TCP会话。",
+    "enabled": true,
+    "persistent_memory": true,
+    "memory_ttl": 86400.0,
+    "total_timeout": 60.0,
+    "retry_min": 1.0,
+    "retry_max": 8.0,
+    "max_candidates": 8,
+    "clock_skew": 120.0,
+    "accept_after_signal_reconnect_grace": 15.0
+  },
+  "web": {
+    "_comment": "默认仅允许本机访问。需要局域网访问时可设置 host=0.0.0.0 且 allow_remote=true，并务必修改密码。",
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 32001,
+    "auto_port": true,
+    "allow_remote": false,
+    "password": "CHANGE-ME-LOCAL-WEB-PASSWORD",
+    "session_ttl": 86400.0,
+    "max_sessions": 8,
+    "login_failure_window": 60.0,
+    "max_login_failures": 5,
+    "request_body_limit": 131072,
+    "request_timeout": 15.0,
+    "status_refresh_ms": 1500,
+    "status_snapshot_interval": 0.75,
+    "action_timeout": 20.0,
+    "theme": "AUTO",
+    "open_browser_on_start": false
+  },
+  "management": {
+    "_comment": "AUTO：Windows有依赖时使用托盘+Web；Linux或缺少依赖时使用Web。Windows托盘依赖：pip install pystray pillow",
+    "mode": "AUTO",
+    "tray_enabled": true,
+    "single_instance": true,
+    "tray_refresh_interval": 2.0,
+    "open_browser_when_tray_unavailable": false,
+    "shutdown_timeout": 25.0
+  },
+  "logging": {
+    "_comment": "日志采用JSON Lines。directory可使用相对路径、绝对路径、~或Windows环境变量。",
+    "enabled": true,
+    "directory": "./logs",
+    "level": "INFO",
+    "max_file_size_mb": 50,
+    "retention_days": 30,
+    "console_mirror": true,
+    "candidate_details": true,
+    "recent_event_lines": 50
+  },
+  "forwards": [
+    {
+      "id": "example-forward-1",
+      "enabled": false,
+      "name": "Example Forward 1",
+      "protocol": "TCP",
+      "listen_host": "127.0.0.1",
+      "listen_port": 33389,
+      "peer": "B",
+      "target_host": "127.0.0.1",
+      "target_port": 3389
+    },
+    {
+      "id": "example-forward-2",
+      "enabled": false,
+      "name": "Example Forward 2",
+      "protocol": "UDP",
+      "listen_host": "127.0.0.1",
+      "listen_port": 50000,
+      "peer": "C",
+      "target_host": "127.0.0.1",
+      "target_port": 50000
+    }
+  ],
+  "runtime_memory": {
+    "_comment": "由 node-stable.py 自动维护。真实运行记忆不得提交到公开仓库。",
+    "updated_at": 0,
+    "peers": {}
+  }
+}
