@@ -114,4 +114,4 @@ The project does not guarantee traversal of every NAT, firewall, or carrier netw
 
 ## License
 
-MIT. See `LICENSE` and `LICENSE-CHOICE.md`.
+MIT. See `LICENSE`.
