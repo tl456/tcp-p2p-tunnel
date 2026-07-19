@@ -1,0 +1,235 @@
+P2P Tunnel Stable 服务器部署与调参指南
+======================================
+
+对应程序：server-stable.py
+协议版本：2
+作用：信令协调 + TCP Relay
+安全模型：服务器是受控但半可信的公网协调器，不保存节点共享密钥，也不能验证或解密节点之间的数据。
+
+交付文件说明
+------------
+server-stable.py       公网云服务器上的信令与Relay服务
+node-stable.py         Windows/Linux节点核心，含Web管理界面与托盘逻辑
+config-tool.py         配置创建、校验、修改和共享密钥轮换工具
+config.json            带中文说明的节点指导配置
+node-stable-windows.pyw Windows无控制台启动器（可选）
+
+一、最小部署步骤
+----------------
+1. 将 server-stable.py 上传到公网云服务器。
+2. 使用 Python 3.10 或更高版本：
+
+   python3 server-stable.py --check
+   python3 server-stable.py
+
+3. 在云平台安全组和服务器系统防火墙中放行：
+
+   TCP 61009  信令端口
+   TCP 61010  Relay端口
+
+4. 节点 config.json 中的 server.address、signal_port、relay_port 必须与服务器一致。
+5. server-stable.py 与旧版 server.py / node_web.pyw 协议不兼容，应同时切换服务器和全部节点。
+
+二、服务器顶部主要参数
+----------------------
+LISTEN_HOST_V6 = "::"
+LISTEN_HOST_V4 = "0.0.0.0"
+
+同时监听IPv6和IPv4。程序显式设置IPv6套接字为V6ONLY，避免Linux双栈端口冲突。
+
+SIGNAL_PORT = 61009
+RELAY_PORT = 61010
+
+修改端口后需同步修改所有节点配置，并调整云安全组/防火墙。
+
+ALLOWED_NODE_IDS = set()
+
+空集合表示允许A-Z。家庭节点建议改成明确白名单，例如：
+
+ALLOWED_NODE_IDS = {"A", "B", "C", "D"}
+
+这只是简单公网扫描防护，不是最终身份认证。真正身份认证由节点共享密钥完成。
+
+REPLACE_OLD_NODE = True
+
+同一个节点ID重新登录时，是否踢掉旧信令会话。家庭设备建议保持True，便于强恢复与程序重启。
+
+MAX_NODES = 26
+MAX_RELAY_TUNNELS = 100
+
+根据实际设备数调小即可。示例：3台设备可设MAX_NODES=8，Relay可设20。
+
+三、心跳参数
+------------
+KEEPALIVE_INTERVAL = 20.0
+KEEPALIVE_TIMEOUT = 65.0
+
+建议TIMEOUT至少为INTERVAL的2.5倍。网络较差时可调为：
+
+KEEPALIVE_INTERVAL = 20.0
+KEEPALIVE_TIMEOUT = 90.0
+
+不要把心跳间隔设得过小，否则公网扫描、弱网络和系统休眠时更容易产生误判断线。
+
+四、TCP连接协调参数
+------------------
+PUNCH_START_DELAY = 1.20
+PUNCH_TOKEN_TTL = 45
+
+PUNCH_START_DELAY：服务器通知双方后，预留多少秒再同时尝试TCP连接。
+- 默认1.20秒适合家庭网络。
+- 跨地区、设备负载高或Windows休眠恢复后，可调到1.5~2.0秒。
+- 不建议超过3秒。
+
+PUNCH_TOKEN_TTL：一次连接尝试令牌有效时间。
+- 默认45秒。
+- 节点的IPv6+IPv4总等待较长时，可调到60秒。
+
+五、Relay参数
+-------------
+RELAY_TOKEN_TTL = 90
+RELAY_BIND_TIMEOUT = 30.0
+RELAY_REBIND_GRACE = 8.0
+
+推荐家庭设置：
+- TOKEN_TTL：60~120秒
+- BIND_TIMEOUT：20~40秒
+- REBIND_GRACE：5~10秒
+
+Relay过程会明确发送：
+RELAY_BIND_OK -> RELAY_WAITING -> RELAY_PAIRED
+
+节点首次Relay失败后会申请全新令牌重试，旧令牌不会复用。
+
+如果Relay经常出现“等待对端超时”：
+1. 检查61010/TCP是否同时在安全组和系统防火墙放行。
+2. 检查域名的AAAA记录是否指向不可用IPv6。
+3. 将节点server.connect_mode临时改为IPV4_ONLY排查。
+4. 将RELAY_TOKEN_TTL调到120、RELAY_BIND_TIMEOUT调到40。
+5. 查看服务端日志与节点Web中的“最近连接尝试”。
+
+六、公网脚本防护参数
+--------------------
+MAX_CONNECTIONS_PER_IP = 12
+MAX_NEW_CONNECTIONS_PER_MINUTE = 60
+MAX_REGISTRATIONS_PER_MINUTE = 30
+MAX_MESSAGES_PER_SECOND = 30
+MAX_SIGNAL_MESSAGE = 2 * 1024 * 1024
+
+这是简易限速，不是复杂认证系统。家庭使用推荐保持默认。
+若服务器频繁被扫描，可适当收紧：
+
+MAX_CONNECTIONS_PER_IP = 6
+MAX_NEW_CONNECTIONS_PER_MINUTE = 30
+MAX_REGISTRATIONS_PER_MINUTE = 12
+MAX_MESSAGES_PER_SECOND = 15
+
+不要把MAX_MESSAGES_PER_SECOND调得过低，否则节点列表更新和多节点连接时可能误伤。
+
+七、Relay性能参数
+----------------
+RELAY_COPY_CHUNK = 128 * 1024
+SOCKET_BACKLOG = 256
+
+RELAY_COPY_CHUNK：
+- 64KB：内存更小，调用次数更多。
+- 128KB：默认，适合远程桌面和普通文件传输。
+- 256KB：大文件吞吐可略好，但单Relay缓冲更大。
+
+Python asyncio Relay属于通用兼容方案，不等同于内核级转发。家庭节点通常足够。
+
+八、日志和控制台UI
+------------------
+UI_ENABLED = True
+CONSOLE_DETAIL_LOG_ENABLED = True
+LOG_ENABLED = True
+LOG_DIRECTORY = "./logs"
+LOG_LEVEL = "INFO"
+LOG_MAX_FILE_SIZE_MB = 20
+LOG_BACKUP_COUNT = 5
+
+后台服务不希望整屏刷新时：
+
+python3 server-stable.py --no-ui
+
+或把UI_ENABLED改为False。
+
+排查连接候选与异常时可将LOG_LEVEL改为DEBUG。长期运行建议INFO。
+
+九、Linux systemd 示例
+----------------------
+创建 /etc/systemd/system/p2p-stable-server.service：
+
+[Unit]
+Description=P2P Stable Signal and Relay Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/p2p-stable
+ExecStart=/usr/bin/python3 /opt/p2p-stable/server-stable.py --no-ui
+Restart=always
+RestartSec=3
+User=p2p
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+
+然后执行：
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now p2p-stable-server
+sudo systemctl status p2p-stable-server
+journalctl -u p2p-stable-server -f
+
+十、Ubuntu/Debian UFW示例
+------------------------
+sudo ufw allow 61009/tcp
+sudo ufw allow 61010/tcp
+sudo ufw status
+
+云平台安全组仍需单独放行相同端口。
+
+十一、常见调参建议
+------------------
+场景A：IPv6和IPv4直连均稳定
+- 保持服务器默认。
+- 节点relay_enabled=true作为兜底。
+- 节点relay_upgrade_to_p2p=true。
+
+场景B：Relay偶尔等待失败
+- RELAY_TOKEN_TTL=120
+- RELAY_BIND_TIMEOUT=40
+- 节点relay_total_timeout=35
+- 节点relay_retries=1或2
+
+场景C：移动网络/休眠恢复后TCP尝试不同步
+- PUNCH_START_DELAY=1.8
+- PUNCH_TOKEN_TTL=60
+- 节点p2p_handshake_timeout=8
+
+场景D：服务器经常遭遇扫描
+- 设置ALLOWED_NODE_IDS白名单
+- 收紧每IP连接/注册限制
+- 保持云安全组只开放61009和61010
+- 不要在服务器保存节点共享密钥
+
+十二、升级和回退
+----------------
+升级前建议：
+1. 保留旧 server.py 和旧节点程序。
+2. 新程序使用同样端口时，需要先停止旧服务。
+3. 同时升级服务器和节点，因为协议版本不同。
+4. 节点首次运行前编辑随包提供的 config.json；也可用 config-tool.py 创建和校验。
+5. 使用 node-stable.py 自带的 --check-config 检查配置。
+
+服务端自检：
+python3 server-stable.py --check
+
+节点配置自检：
+python node-stable.py --config config.json --check-config
+
+节点本地协议自检：
+python node-stable.py --config config.json --self-test
